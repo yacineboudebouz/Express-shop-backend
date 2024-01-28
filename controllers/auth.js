@@ -25,7 +25,7 @@ const register = async (req, res) => {
     const userID = uuidv4();
     // query bah npostiw user fe database
     const insertUserQuery =
-      "INSERT INTO Users (UserID, Username, Password, Email,  Address, ProfilePictureURL) VALUES (?, ?, ?,  ?, ?,?)";
+      "INSERT INTO Users (UserID, Username, Password, Email,  Address, ProfilePictureURL, isAdmin) VALUES (?, ?, ?,  ?, ?,?,false)";
     await connection
       .promise()
       .query(insertUserQuery, [
@@ -33,7 +33,7 @@ const register = async (req, res) => {
         username,
         hashedPassword,
         email,
-        address,
+        "",
         "",
       ]);
     // nbe3toi response bli sayii
@@ -84,4 +84,51 @@ const getUserData = async (req, res) => {
   }
 };
 
-module.exports = { login, register, getUserData };
+const updateUser = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { username, email, address } = req.body;
+
+    // Check if the new username is in use by other users
+    const usernameInUseQuery = `
+      SELECT UserID FROM Users WHERE Username = ? AND UserID != ?
+    `;
+    const [usernameInUse] = await connection
+      .promise()
+      .query(usernameInUseQuery, [username, userId]);
+
+    // Check if the new email is in use by other users
+    const emailInUseQuery = `
+      SELECT UserID FROM Users WHERE Email = ? AND UserID != ?
+    `;
+    const [emailInUse] = await connection
+      .promise()
+      .query(emailInUseQuery, [email, userId]);
+
+    // If either the new username or email is in use, return an error
+    if (usernameInUse.length > 0) {
+      return res.status(400).json({ message: "Username is already in use" });
+    }
+
+    if (emailInUse.length > 0) {
+      return res.status(400).json({ message: "Email is already in use" });
+    }
+
+    // Update user information
+    const updateUserQuery = `
+      UPDATE Users
+      SET Username = ?, Email = ?, Address = ?
+      WHERE UserID = ?
+    `;
+    await connection
+      .promise()
+      .query(updateUserQuery, [username, email, address, userId]);
+
+    res.json({ message: "User updated successfully" });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+module.exports = { login, register, getUserData, updateUser };
