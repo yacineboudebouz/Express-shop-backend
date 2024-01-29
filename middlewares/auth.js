@@ -9,6 +9,7 @@ const auth = async (req, res, next) => {
     if (!verified)
       return res.status(401).json({ message: "Token verification failed" });
 
+
     req.user = verified.id;
     req.token = token;
     next();
